@@ -100,6 +100,62 @@ read_expression_data=function(folder_path=NULL,count_matrix_path=NULL,gene_annot
   return(expression_set)
 }
 
+#' Calculate cpm
+#'
+#'The function accepts an ExpressionSet array or a count matrix
+#'and returns a counts per million matrix
+#'
+#'
+#' @param data
+#'
+#' @return
+#' @export
+#'
+#'
+get_cpm=function(data) {
+  #if data is an ExpressionSet use biobase to get counts
+  if(class(data)[1]=='ExpressionSet') {
+    count_matrix=Biobase::exprs(exp)
+  } else if (class(data)[1]!='matrix') {
+    stop("Data should be a count matrix or an ExpressionSet")
+    count_matrix=data
+  } else {
+    count_matrix=data
+  }
+  # use edgeR to get cmp
+  cpm_mat=apply(count_matrix,2,function(x) x/sum(x)*10^6)
+  return(cpm_mat)
+}
 
-setwd("~/Documents/task/")
-folder_path='~/Documents/task/'
+#' Filter out lowly expressed genes
+#'
+#' The function accepts an ExpressionSet array or a count matrix and keeps
+#' genes that express more then cpm_saf (default 1) in at least sampels_per (default 0.9).
+#' The function default is to return a filtered cpm_matrix, if return_cpm is F the function reruns the  original data filtered
+#'
+#'
+#' @param data and ExpressionSet array or a count matrix
+#' @param cpm_saf the threshold for cmp expression, (default 1)
+#' @param sampels_per the threshold for percentage of samples expressing the gene, (default 0.9)
+#' @param return_cpm a parameter which determine if to return the cpm or raw data (default T)
+#'
+#' @return
+#' @export
+#'
+filter_lowly_expressed_genes=function(data,cpm_saf=1,sampels_per=0.9,return_cpm=T) {
+  cpm_matrix=get_cpm(data)
+  #get index for samples to keep
+  n_samps=ncol(cpm_matrix)
+  ind_keep=apply(cpm_matrix,1,function(x) (sum(x>cpm_saf)/n_samps)>sampels_per)
+  if(return_cpm==T) {
+    cpm_matrix_f=cpm_matrix[ind,]
+    return(cpm_matrix_f)
+  }
+  data_f=data[ind_keep,]
+  return(data_f)
+}
+
+
+
+
+
